@@ -1,0 +1,81 @@
+/* --- Google Font Import --- */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
+/* --- Color & Style Variables --- */
+:root {
+    --primary-color: #4CAF50; /* Frog Green */
+    --secondary-color: #8BC34A; /* Light Frog Green */
+    --accent-color: #FFC107; /* Bright Yellow for buttons */
+    --background-color: #F0F8FF; /* Light Pond Blue */
+    --text-color: #333;
+    --card-bg-color: #FFFFFF;
+    --border-radius: 15px;
+    --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* --- Base Styles --- */
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+/* --- Card Styles (Pond & Lilypad) --- */
+.pond-card, .lilypad-card {
+    background-color: var(--card-bg-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    box-shadow: var(--box-shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+
+.pond-card:hover, .lilypad-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* --- Input Textarea ('The Pond') --- */
+.pond-textarea {
+    border-radius: 10px;
+    border: 2px solid #e0e0e0;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.pond-textarea:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(76, 175, 80, 0.25);
+}
+
+/* --- Button ('Analysis Jump!') --- */
+.btn-accent {
+    background-color: var(--accent-color);
+    color: #fff;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    padding: 0.75rem 1.5rem;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-accent:hover {
+    background-color: #ffb300;
+    transform: translateY(-2px);
+}
+
+/* --- NEW: Reveal on Select Class --- */
+.reveal-on-select {
+    color: var(--card-bg-color); /* Make text color same as card background */
+    transition: color 0.2s;
+}
+
+.reveal-on-select::selection {
+    color: #FFFFFF; /* White text on selection */
+    background-color: #0d6efd; /* Bootstrap's default blue for selection background */
+}

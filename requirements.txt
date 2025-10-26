@@ -1,0 +1,6 @@
+Flask
+konlpy
+google-generativeai
+pandas
+openpyxl
+kiwipiepy

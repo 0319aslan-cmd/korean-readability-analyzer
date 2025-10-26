@@ -1,0 +1,12 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Documents
+*.hwp
+
+# Compressed files
+*.zip
+
+# Data directory
+국어교과 지문형 문제 데이터/

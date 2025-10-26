@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 텍스트 분석 프로그램</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Google Fonts: Noto Sans KR -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header class="text-center py-4">
+        <h1 class="fw-bold"><img src="{{ url_for('static', filename='frog.svg') }}" alt="개구리 아이콘" style="height: 1.2em; vertical-align: -0.2em; margin-right: 0.1em;"> AI 텍스트 분석 프로그램 (수업용)</h1>
+        <p class="text-muted">글의 난이도를 비교하고, 조작하고, 예측하면 글을 더 잘 읽을 수 있을 거예요!</p>
+    </header>
+
+    <main class="container my-5">
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs nav-fill mb-4" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="compare-tab" data-bs-toggle="tab" data-bs-target="#compare" type="button" role="tab" aria-controls="compare" aria-selected="true"><strong>1단계: 비교하기</strong></button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="manipulate-tab" data-bs-toggle="tab" data-bs-target="#manipulate" type="button" role="tab" aria-controls="manipulate" aria-selected="false"><strong>2단계: 조작하기</strong></button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="predict-tab" data-bs-toggle="tab" data-bs-target="#predict" type="button" role="tab" aria-controls="predict" aria-selected="false"><strong>3단계: 예측하기</strong></button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="myTabContent">
+            <!-- Compare Tab -->
+            <div class="tab-pane fade show active" id="compare" role="tabpanel" aria-labelledby="compare-tab">
+                <h4 class="mb-3 text-center">샘플 지문 비교 분석: 동화 vs 설명문</h4>
+                <div id="compare-results-container" class="row mt-4">
+                    <div id="result-left" class="col-md-6">
+                        <!-- Donghwa result will be rendered here -->
+                    </div>
+                    <div id="result-right" class="col-md-6">
+                        <!-- Supermoon result will be rendered here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manipulate Tab -->
+            <div class="tab-pane fade" id="manipulate" role="tabpanel" aria-labelledby="manipulate-tab">
+                <h4 class="mb-3 text-center">난이도의 본질 탐구하기</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <textarea id="text-input-manipulate" class="form-control pond-textarea" rows="15" placeholder="분석하고 싶은 텍스트를 여기에 붙여넣으세요..."></textarea>
+                        <div class="d-grid gap-2 mt-3">
+                            <button id="analyze-manipulate-button" class="btn btn-lg btn-accent">분석하기 🚀</button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div id="manipulate-controls">
+                            <h5 class="mb-3 fs-6">분석 가중치 조절 <button id="reset-weights-button" class="btn btn-sm btn-outline-secondary float-end">초기화</button></h5>
+                            <p class="small text-muted">각 영역의 중요도를 조절하여 최종 점수 변화를 관찰해보세요.</p>
+                            
+                            <!-- Micro Weights -->
+                            <div class="alert alert-light pt-2">
+                                <strong class="d-block mb-2">1. 어휘/문법 (미시 분석)</strong>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="weight-length" class="form-label small">문장 길이 (<span id="weight-length-val">1.0</span>) <a href="#" tabindex="0" role="button" class="text-decoration-none" data-bs-toggle="popover" data-bs-trigger="focus" title="문장 길이" data-bs-content="한 문장의 평균적인 길이입니다. 문장이 길수록 독해의 호흡이 길어져 일반적으로 난이도가 높아집니다."><i class="bi bi-info-circle"></i></a></label>
+                                        <input type="range" class="form-range" id="weight-length" min="0" max="2" step="0.1" value="1.0">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="weight-clause" class="form-label small">구문 복잡도 (<span id="weight-clause-val">1.0</span>) <a href="#" tabindex="0" role="button" class="text-decoration-none" data-bs-toggle="popover" data-bs-trigger="focus" title="구문 복잡도" data-bs-content="한 문장 안에 '절(주어+서술어)'이 얼마나 많이 포함되었는지를 나타냅니다. 복잡한 문장(겹문장)이 많을수록 난이도가 높아집니다."><i class="bi bi-info-circle"></i></a></label>
+                                        <input type="range" class="form-range" id="weight-clause" min="0" max="2" step="0.1" value="1.0">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="weight-ttr" class="form-label small">어휘 다양성 (<span id="weight-ttr-val">1.0</span>) <a href="#" tabindex="0" role="button" class="text-decoration-none" data-bs-toggle="popover" data-bs-trigger="focus" title="어휘 다양성" data-bs-content="글 전체에 얼마나 다양한 어휘가 사용되었는지를 측정합니다. 전문적인 글일수록 다양한 어휘가 사용될 경향이 있습니다."><i class="bi bi-info-circle"></i></a></label>
+                                        <input type="range" class="form-range" id="weight-ttr" min="0" max="2" step="0.1" value="1.0">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="weight-lexical" class="form-label small">어휘 난이도 (<span id="weight-lexical-val">1.0</span>) <a href="#" tabindex="0" role="button" class="text-decoration-none" data-bs-toggle="popover" data-bs-trigger="focus" title="어휘 난이도" data-bs-content="교육과정 어휘 목록을 기준으로 얼마나 어려운 단어가 사용되었는지 평가합니다. 목록에 없는 단어는 AI가 직접 난이도를 판단합니다."><i class="bi bi-info-circle"></i></a></label>
+                                        <input type="range" class="form-range" id="weight-lexical" min="0" max="2" step="0.1" value="1.0">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Macro & Inference Weights -->
+                            <div class="alert alert-light pt-2">
+                                <strong class="d-block mb-2">2. 글의 전체 구조 (거시/추론)</strong>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="weight-macro" class="form-label small"><strong>구조/논리</strong> (<span id="weight-macro-val">1.0</span>) <a href="#" tabindex="0" role="button" class="text-decoration-none" data-bs-toggle="popover" data-bs-trigger="focus" title="구조/논리 (거시 점수)" data-bs-content="글의 전체적인 짜임새를 평가합니다. 이야기가 순서대로 잘 흘러가는지, 문단과 문장이 자연스럽게 연결되는지 등을 확인합니다. 점수가 높을수록 구조가 복잡하고 어렵다는 의미입니다."><i class="bi bi-info-circle"></i></a></label>
+                                        <input type="range" class="form-range" id="weight-macro" min="0" max="2" step="0.1" value="1.0">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="weight-inference" class="form-label small"><strong>추론 잠재력</strong> (<span id="weight-inference-val">1.0</span>) <a href="#" tabindex="0" role="button" class="text-decoration-none" data-bs-toggle="popover" data-bs-trigger="focus" title="추론 잠재력 (보정 점수)" data-bs-content="글에 숨겨진 의미를 파악하는 능력을 평가합니다. 이 점수는 다른 점수들과 별개로, 최종 점수에 그대로 더해지거나 빼지는 **보정 점수** 역할을 합니다."><i class="bi bi-info-circle"></i></a></label>
+                                        <input type="range" class="form-range" id="weight-inference" min="0" max="2" step="0.1" value="1.0">
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="manipulate-result" class="mt-4" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Predict Tab -->
+            <div class="tab-pane fade" id="predict" role="tabpanel" aria-labelledby="predict-tab">
+                <h4 class="mb-3 text-center">내 예측 vs AI의 예측</h4>
+                <div class="row">
+                    <div class="col-md-7">
+                        <div class="card">
+                            <div class="card-header"><strong>제시문</strong></div>
+                            <div class="card-body">
+                                <p id="predict-text-display" class="card-text" style="max-height: 250px; overflow-y: auto;">여기에 예측할 지문이 표시됩니다. 아래 버튼을 눌러 새로운 지문을 받아오세요.</p>
+                            </div>
+                        </div>
+                         <button id="load-predict-text-button" class="btn btn-secondary mt-3">새로운 지문 받기</button>
+                    </div>
+                    <div class="col-md-5">
+                        <h5>난이도 예측하기</h5>
+                        
+                        <div id="prediction-inputs">
+                            <p class="small text-muted mb-2"><b>1. 기본 점수 예측 (각 1~10점)</b><br>1점: 매우 쉬움 / 5점: 보통 / 10점: 매우 어려움</p>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6"><label class="form-label small">문장 길이</label><input type="number" class="form-control form-control-sm prediction-input-base" data-id="length" min="1" max="10" value="5"></div>
+                                <div class="col-6"><label class="form-label small">구문 복잡도</label><input type="number" class="form-control form-control-sm prediction-input-base" data-id="clause" min="1" max="10" value="5"></div>
+                                <div class="col-6"><label class="form-label small">어휘 다양성</label><input type="number" class="form-control form-control-sm prediction-input-base" data-id="ttr" min="1" max="10" value="5"></div>
+                                <div class="col-6"><label class="form-label small">어휘 난이도</label><input type="number" class="form-control form-control-sm prediction-input-base" data-id="lexical" min="1" max="10" value="5"></div>
+                                <div class="col-12"><label class="form-label small">구조/논리</label><input type="number" class="form-control form-control-sm prediction-input-base" data-id="macro" min="1" max="10" value="5"></div>
+                            </div>
+
+                            <p class="small text-muted mb-2"><b>2. 추론 잠재력 보정 (-5 ~ +5점)</b><br>글에 숨겨진 의미가 많아 추론이 필요하면 (+), 내용이 명확하면 (-)</p>
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <input type="range" class="form-range" id="prediction-input-inference" min="-5" max="5" step="1" value="0">
+                                    <div class="text-center small fw-bold"><span id="prediction-inference-val">0</span>점</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="text-center">
+                            <h6 class="text-muted">🔮 나의 예측 종합 점수</h6>
+                            <h2 id="predicted-score-display" class="fw-bold">50점</h2>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-3">
+                            <button id="analyze-predict-button" class="btn btn-lg btn-accent">결과 확인하기 🚀</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="predict-result-container" class="mt-4" style="display: none;"></div>
+
+                <hr class="my-4">
+                <h5 class="text-center mb-3">난이도별 예시 지문</h5>
+                <p class="text-center text-muted small">아래 예시를 참고하여 점수를 예측해보세요.</p>
+                <div class="accordion" id="exampleAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingVeryLow">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseVeryLow" aria-expanded="false" aria-controls="collapseVeryLow">
+                                <strong>난이도 '아주 쉬움' 예시 (25점 이하)</strong>
+                            </button>
+                        </h2>
+                        <div id="collapseVeryLow" class="accordion-collapse collapse" aria-labelledby="headingVeryLow" data-bs-parent="#exampleAccordion">
+                            <div class="accordion-body small">
+                                "사자는 아프리카에 사는 고양이과 동물입니다. 사자는 육식 동물이며, 주로 다른 동물을 사냥해서 먹습니다. 수컷 사자는 멋진 갈기를 가지고 있습니다."
+                                <div class="alert alert-info small mt-3">
+                                    <strong>분석 결과 예시</strong><br>
+                                    - <strong>실제 점수:</strong> 약 18점<br>
+                                    - <strong>분석 이유:</strong> 모든 문장이 매우 짧고 단순한 구조를 가집니다. 사용된 어휘 또한 대부분의 사람이 아는 기초적인 단어들로 이루어져 있습니다.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingLow">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLow" aria-expanded="false" aria-controls="collapseLow">
+                                <strong>난이도 '쉬움' 예시 (50점 이하)</strong>
+                            </button>
+                        </h2>
+                        <div id="collapseLow" class="accordion-collapse collapse" aria-labelledby="headingLow" data-bs-parent="#exampleAccordion">
+                            <div class="accordion-body small">
+                                "스마트폰은 전화, 메시지, 인터넷 등 다양한 기능을 제공하는 휴대용 기기입니다. 우리는 스마트폰을 사용하여 다른 사람과 소통하고, 정보를 검색하며, 사진이나 동영상을 찍을 수 있습니다. 배터리를 충전해야 계속 사용할 수 있습니다."
+                                <div class="alert alert-info small mt-3">
+                                    <strong>분석 결과 예시</strong><br>
+                                    - <strong>실제 점수:</strong> 약 42점<br>
+                                    - <strong>분석 이유:</strong> 문장이 비교적 짧고, 일상생활에서 흔히 사용하는 단어들로 구성되어 있습니다. 복잡한 개념이나 추론을 요구하지 않아 쉽게 이해할 수 있습니다.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingMid">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMid" aria-expanded="false" aria-controls="collapseMid">
+                                <strong>난이도 '보통' 예시 (50~70점)</strong>
+                            </button>
+                        </h2>
+                        <div id="collapseMid" class="accordion-collapse collapse" aria-labelledby="headingMid" data-bs-parent="#exampleAccordion">
+                            <div class="accordion-body small">
+                                "지구 온난화는 대기 중 온실가스 농도가 증가하면서 지구의 평균 기온이 점차 상승하는 현상을 말합니다. 이로 인해 극지방의 빙하가 녹아 해수면이 상승하고, 전 세계적으로 폭염, 홍수 등 이상 기후 현상이 빈번하게 발생하고 있습니다."
+                                <div class="alert alert-info small mt-3">
+                                    <strong>분석 결과 예시</strong><br>
+                                    - <strong>실제 점수:</strong> 약 68점<br>
+                                    - <strong>분석 이유:</strong> 과학적 사실을 설명하지만, 비교적 친숙한 용어와 명확한 인과관계로 구성되어 있어요.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingHigh">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHigh" aria-expanded="false" aria-controls="collapseHigh">
+                                <strong>난이도 '어려움' 예시 (70점 이상)</strong>
+                            </button>
+                        </h2>
+                        <div id="collapseHigh" class="accordion-collapse collapse" aria-labelledby="headingHigh" data-bs-parent="#exampleAccordion">
+                            <div class="accordion-body small">
+                                "해체주의 철학에서 '차연(différance)'은 지연(defer)과 차이(differ)의 의미를 동시에 갖는 조어이다. 데리다는 이 개념을 통해 기표와 기의의 관계가 고정불변하는 것이 아니라, 끊임없이 미끄러지며 의미가 지연되고 다른 기호와의 차이 속에서만 잠정적으로 발생한다고 보았다. 이는 서구 형이상학의 로고스 중심주의, 즉 음성언어가 문자언어보다 우월하며 진리를 직접적으로 담지한다는 믿음을 비판하는 핵심 기제가 된다."
+                                <div class="alert alert-info small mt-3">
+                                    <strong>분석 결과 예시</strong><br>
+                                    - <strong>실제 점수:</strong> 약 84점<br>
+                                    - <strong>분석 이유:</strong> '해체주의', '차연', '기표', '기의' 등 매우 전문적이고 추상적인 철학 용어가 사용되었고, 문장 구조 또한 복잡하여 높은 수준의 독해력이 필요해요.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center py-3 mt-5">
+        <p class="text-muted small">&copy; 2025 Readability Analysis Program</p>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
