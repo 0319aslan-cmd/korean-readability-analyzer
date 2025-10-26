@@ -37,8 +37,8 @@ def load_vocab_with_levels_from_csv(filepath, word_col, level_col, max_level):
     except Exception as e: print(f"Error reading {filepath}: {e}")
     return vocab_map
 
-NIKL_VOCAB_PATH = r"C:\Users\0319a\OneDrive - 한국교원대학교\바탕 화면\이독성 분석 프로그램\sample_nikl (1).csv"
-EBS_VOCAB_PATH = r"C:\Users\0319a\OneDrive - 한국교원대학교\바탕 화면\이독성 분석 프로그램\ebs_vocab_with_level.csv"
+NIKL_VOCAB_PATH = "sample_nikl (1).csv"
+EBS_VOCAB_PATH = "ebs_vocab_with_level.csv"
 ALL_VOCAB_LEVELS = {}
 ALL_VOCAB_LEVELS.update(load_vocab_with_levels_from_csv(NIKL_VOCAB_PATH, 0, 1, 5))
 ALL_VOCAB_LEVELS.update(load_vocab_with_levels_from_csv(EBS_VOCAB_PATH, 0, 2, 7))
