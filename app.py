@@ -1,11 +1,8 @@
-from __future__ import annotations
-from flask import Flask, render_template, request, jsonify
-from werkzeug.exceptions import HTTPException
+import streamlit as st
 import sys
 import os
 import traceback
-import math
-from typing import Any, Mapping, Sequence, Union
+import numpy as np
 
 # 프로젝트 루트 경로 추가
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -13,116 +10,82 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # 하이브리드 분석 함수 가져오기
 from hybrid_readability_analyzer import analyze_text_hybrid
 
-# --------------------------
-# 유틸: JSON 직렬화 안전 변환
-# --------------------------
-def to_json_safe(obj: Any) -> Any:
-    """numpy, set, 복합 객체를 JSON 직렬화 가능한 형태로 변환."""
-    try:
-        import numpy as np  # 선택적 의존
-        np_types = (np.integer, np.floating, np.bool_)
-        if isinstance(obj, np_types):
-            return obj.item()
-    except Exception:
-        pass
+# --- Streamlit 앱 UI 구성 ---
 
-    if isinstance(obj, (str, int, float, bool)) or obj is None:
-        return obj
-    if isinstance(obj, (list, tuple, set)):
-        return [to_json_safe(x) for x in obj]
-    if isinstance(obj, dict):
-        return {str(k): to_json_safe(v) for k, v in obj.items()}
-    if isinstance(obj, (bytes, bytearray)):
-        return obj.decode("utf-8", errors="replace")
-    if isinstance(obj, (complex,)):
-        return {"real": obj.real, "imag": obj.imag}
-    if isinstance(obj, (range,)):
-        return list(obj)
-    # fallback: 문자열화 (로깅 참고용)
-    return str(obj)
+# 페이지 설정 (제목, 아이콘 등)
+st.set_page_config(page_title="한국어 이독성 분석기", page_icon="🐸")
 
-# --------------------------
-# 앱 초기화
-# --------------------------
-app = Flask(__name__, template_folder="templates", static_folder="static")
+# 제목
+st.title("📝 한국어 이독성 분석기")
+st.write("텍스트를 입력하면 종합적인 이독성 점수와 세부 지표를 분석합니다.")
 
-# 허용 장르 (예시)
-ALLOWED_GENRES = {"expo", "narr", "argument", "news", "tech"}
+# 사이드바: 설정 및 옵션
+with st.sidebar:
+    st.header("⚙️ 분석 설정")
+    
+    # 1. 장르 선택
+    genre = st.selectbox(
+        "글의 종류(장르)를 선택하세요:",
+        ("expo", "narr", "argument", "news", "tech"),
+        index=0, # 기본값 'expo'
+        help="글의 장르에 따라 분석 가중치가 일부 조정됩니다."
+    )
 
-# 텍스트 길이 제한 (예: 50,000자)
-MAX_TEXT_LEN = 50_000
+    # 2. 가중치 설정 (간단한 슬라이더로 변경)
+    st.subheader("지표별 가중치 조절")
+    weights = {
+        "length": st.slider("어휘/구문 길이", 0.0, 2.0, 1.0, 0.1),
+        "clause": st.slider("구문 구조", 0.0, 2.0, 1.0, 0.1),
+        "ttr": st.slider("어휘 다양성", 0.0, 2.0, 1.0, 0.1),
+        "lexical": st.slider("어휘 수준", 0.0, 2.0, 1.0, 0.1),
+        "macro": st.slider("거시 구조", 0.0, 2.0, 1.0, 0.1),
+        "inference": st.slider("추론 요구", 0.0, 2.0, 1.0, 0.1),
+    }
 
-@app.route("/")
-def index():
-    # templates/index.html 존재 가정
-    return render_template("index.html")
+# 메인 화면: 텍스트 입력 및 결과 출력
+st.header("👇 분석할 텍스트를 여기에 붙여넣으세요")
+text_to_analyze = st.text_area(" ", height=250, placeholder="여기에 텍스트를 입력하세요...")
 
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"ok": True}), 200
+# "분석하기" 버튼
+if st.button("분석하기", type="primary"):
+    if text_to_analyze.strip():
+        try:
+            # 분석 실행
+            with st.spinner("텍스트를 분석 중입니다... 잠시만 기다려주세요."):
+                report = analyze_text_hybrid(text_to_analyze, weights, genre)
 
-@app.route("/analyze", methods=["POST"])
-def analyze():
-    try:
-        # JSON만 받도록 강제
-        data = request.get_json(silent=False, force=False)
-        if not isinstance(data, dict):
-            return jsonify({"error": "요청 본문은 JSON 객체여야 합니다."}), 400
+            # --- 결과 출력 ---
+            st.header("📊 분석 결과")
 
-        text_to_analyze = (data.get("text") or "").strip()
-        genre = (data.get("genre") or "expo").strip().lower()
-        
-        # --- 가중치 처리 ---
-        weights = data.get("weights")
-        if not isinstance(weights, dict) or not weights:
-            weights = {"length": 1.0, "clause": 1.0, "ttr": 1.0, "lexical": 1.0}
-        else:
-            # Ensure all keys are present and are floats
-            weights = {
-                "length": float(weights.get("length", 1.0)),
-                "clause": float(weights.get("clause", 1.0)),
-                "ttr": float(weights.get("ttr", 1.0)),
-                "lexical": float(weights.get("lexical", 1.0)),
-                "macro": float(weights.get("macro", 1.0)),
-                "inference": float(weights.get("inference", 1.0)),
-            }
+            # 최종 점수 강조
+            final_score = report.get("final_score")
+            if final_score is not None:
+                st.metric(label="⭐ 종합 이독성 점수", value=f"{final_score:.2f} 점")
+                st.progress(final_score / 100.0, text=f"난이도: {report.get('final_grade', '알 수 없음')}")
 
-        config = data.get("config") or {}  # 옵션 확장 여지
+            st.divider()
 
-        # 입력 검증
-        if not text_to_analyze:
-            return jsonify({"error": "분석할 텍스트를 입력해주세요."}), 400
-        if len(text_to_analyze) > MAX_TEXT_LEN:
-            return jsonify({"error": f"텍스트가 너무 깁니다. 최대 {MAX_TEXT_LEN}자까지 허용됩니다."}), 413
-        if genre not in ALLOWED_GENRES:
-            return jsonify({"error": f"허용되지 않은 장르입니다. 사용 가능: {sorted(ALLOWED_GENRES)}"}), 400
-        if not isinstance(config, dict):
-            return jsonify({"error": "config는 객체여야 합니다."}), 400
+            # 세부 지표들을 2열로 나눠서 표시
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("어휘 및 구문")
+                st.text(f"평균 문장 길이: {report.get('avg_sentence_length', 0):.2f} 어절")
+                st.text(f"평균 어절 길이: {report.get('avg_word_length', 0):.2f} 음절")
+                st.text(f"어휘 다양도 (TTR): {report.get('ttr', 0):.2f}")
+                
+            with col2:
+                st.subheader("고급 지표")
+                st.text(f"평균 부사 사용 빈도: {report.get('adverb_ratio', 0):.2f}")
+                st.text(f"평균 접속사 사용 빈도: {report.get('conj_ratio', 0):.2f}")
+                st.text(f"문장 구조 복잡도: {report.get('sentence_complexity', 0):.2f}")
 
-        # 실제 분석 호출
-        report = analyze_text_hybrid(text_to_analyze, weights, genre)
+            # 원본 보고서(dict)를 펼쳐서 보여주기 (디버깅용)
+            with st.expander("자세한 분석 결과 보기 (JSON)"):
+                st.json(report)
 
-        # 직렬화 안전 변환
-        safe_report = to_json_safe(report)
-
-        return jsonify({"result": safe_report}), 200
-
-    except HTTPException as he:
-        # Flask/Werkzeug가 던진 HTTP 예외는 그대로 전달
-        return jsonify({"error": he.description}), he.code
-    except Exception:
-        tb_str = traceback.format_exc()
-        # 서버 콘솔에 상세 로그
-        print(f"[analyze] Internal Error:\n{tb_str}", flush=True)
-        # 클라이언트엔 일반 메시지
-        return jsonify({"error": "분석 중 서버에서 오류가 발생했습니다."}), 500
-
-# --------------------------
-# 진입점
-# --------------------------
-if __name__ == "__main__":
-    # 환경변수로 제어: DEBUG, HOST, PORT
-    debug = os.getenv("FLASK_DEBUG", "0") == "1"
-    host = os.getenv("FLASK_HOST", "0.0.0.0")
-    port = int(os.getenv("FLASK_PORT", "5000"))
-    app.run(host=host, port=port, debug=debug)
+        except Exception as e:
+            st.error("분석 중 오류가 발생했습니다.")
+            st.code(traceback.format_exc())
+    else:
+        st.warning("분석할 텍스트를 입력해주세요.")
